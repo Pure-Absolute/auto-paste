@@ -2,7 +2,7 @@ import os
 import time
 from threading import Thread
 
-TEXT_FILE = "/home/agis/Desktop/my code/AFK paste/string.txt"
+TEXT_FILE = "./string.txt"
 TYPE_DELAY = 0.06
 MINIMUM_INTERVAL = 5
 START_DELAY = 1
