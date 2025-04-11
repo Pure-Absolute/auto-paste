@@ -1,0 +1,78 @@
+import os
+import time
+from threading import Thread
+
+# === CONFIG ===
+TEXT_FILE = "/home/agis/Desktop/my code/AFK paste/string.txt"
+TYPE_DELAY = 0.01
+MINIMUM_INTERVAL = 5  # seconds
+START_DELAY = 1       # seconds before typing starts
+# =============
+
+# Get current state
+running = store.get("afk_running", False)
+paused = store.get("afk_paused", False)
+
+# If Ctrl+Shift+F1 is pressed → toggle pause state
+if keyboard.is_pressed("<ctrl>+<shift>+<f1>"):
+    paused = not paused
+    store["afk_paused"] = paused
+    keyboard.send_keys("AFK script paused." if paused else "AFK script resumed.")
+    exit(0)
+
+# If Ctrl+F1 is pressed → toggle running state
+running = not running
+store["afk_running"] = running
+store["afk_paused"] = False  # clear pause flag on start/resume
+
+if not running:
+    keyboard.send_keys("AFK script stopped.")
+    exit(0)
+
+def type_text(text):
+    for char in text:
+        keyboard.send_keys(char)
+        time.sleep(TYPE_DELAY)
+
+def afk_loop():
+    # Load lines from file
+    if not os.path.exists(TEXT_FILE):
+        keyboard.send_keys("Text file not found.")
+        store["afk_running"] = False
+        return
+
+    with open(TEXT_FILE, "r") as f:
+        lines = [line.strip() for line in f if line.strip()]
+
+    if not lines:
+        keyboard.send_keys("No lines to type.")
+        store["afk_running"] = False
+        return
+
+    line_index = store.get("afk_line_index", 0)
+
+    while store.get("afk_running", False) and line_index < len(lines):
+        if store.get("afk_paused", False):
+            time.sleep(0.5)
+            continue
+
+        current_line = lines[line_index]
+        time.sleep(START_DELAY)  # Wait before typing
+        type_text(current_line)
+        keyboard.send_keys("<enter>")
+
+        line_index += 1
+        store["afk_line_index"] = line_index
+
+        # If we're done with all lines, stop gracefully
+        if line_index >= len(lines):
+            keyboard.send_keys("AFK script finished.")
+            store["afk_running"] = False
+            break
+
+        # Make sure we don't spam — always wait at least MINIMUM_INTERVAL
+        time.sleep(max(MINIMUM_INTERVAL, len(current_line) * TYPE_DELAY))
+
+# Start the background thread
+thread = Thread(target=afk_loop)
+thread.start()
